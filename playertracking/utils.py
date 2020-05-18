@@ -2,6 +2,8 @@ from absl import logging
 import numpy as np
 import tensorflow as tf
 import cv2
+import time
+import copy
 
 YOLOV3_LAYER_LIST = [
     'yolo_darknet',
@@ -102,26 +104,87 @@ def broadcast_iou(box_1, box_2):
 def draw_outputs(img, outputs, class_names):
     boxes, objectness, classes, nums = outputs
     boxes, objectness, classes, nums = boxes[0], objectness[0], classes[0], nums[0]
-    #print("In draw outputs")
-    #print(classes[0])
-    #print(boxes[0])
-    #print(objectness[0])
-    #print(nums[0])
+    
 
     wh = np.flip(img.shape[0:2])
     for i in range(nums):
-       # print(class_names[int(classes[i])])
-        #print(classes[i])
-        #print(boxes[i][0:2])
-                #if classes[i]=='person':
-        #print(class_names[i])
-        #if class_names[int(classes[i])]!='person' or 'crowd':
+       
         x1y1 = tuple((np.array(boxes[i][0:2]) * wh).astype(np.int32))
         x2y2 = tuple((np.array(boxes[i][2:4]) * wh).astype(np.int32))
-        img = cv2.rectangle(img, x1y1, x2y2, (255, 255, 0), 2)
-        img = cv2.putText(img, '{} {:.4f}'.format(
-        class_names[int(classes[i])], objectness[i]),
-        x1y1, cv2.FONT_HERSHEY_COMPLEX_SMALL, 1, (0, 0, 255), 1)
+            
+        if class_names[int(classes[i])]=='person' :
+            img = cv2.rectangle(img, x1y1, x2y2, (255, 255, 0), 1)
+            #img = cv2.putText(img, '{} {:.2f}'.format(
+            #class_names[int(classes[i])], objectness[i]),
+            #(x1y1[0],x2y2[1]), cv2.FONT_HERSHEY_PLAIN, 1, (0, 0,240 ), 1)
+        if class_names[int(classes[i])]=='crowd' :
+            img = cv2.rectangle(img, x1y1, x2y2, (0,0 , 255), 1)
+            img = cv2.putText(img, '{} {:.2f}'.format(
+            class_names[int(classes[i])], objectness[i]),
+            (x1y1[0],x2y2[1]), cv2.FONT_HERSHEY_PLAIN, 1, (0, 0,0 ), 1)
+    return img
+
+
+def draw_outputs_3(img, outputs, class_names):
+    
+    #essentials
+    boxes, objectness, classes, nums = outputs
+    boxes, objectness, classes, nums = boxes[0], objectness[0], classes[0], nums[0]
+    wh = np.flip(img.shape[0:2])
+    print(wh)
+    ## customization
+    #fgbg = cv2.bgsegm.createBackgroundSubtractorMOG()
+    fgbg=cv2.createBackgroundSubtractorMOG2()
+    last_recorded_time = time.time()
+    last_recorded_time_1 = time.time()
+    first_iteration_indicator = 1
+    for i in range(nums):
+       # essentials 
+        global crop_img,crop_black
+        x1y1 = tuple((np.array(boxes[i][0:2]) * wh).astype(np.int32))
+        x2y2 = tuple((np.array(boxes[i][2:4]) * wh).astype(np.int32))
+        
+        
+        #customization
+        curr_time = time.time()
+        if first_iteration_indicator == 1:
+            first_frame =copy.deepcopy(img)
+            gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+            height, width = gray.shape[:2]
+            accum_image = np.zeros((height, width), np.uint8)
+            #crop_img=img[x1y1[1]:x2y2[1],x1y1[0]:x2y2[0]]
+            #crop_black=accum_image[x1y1[1]:x2y2[1],x1y1[0]:x2y2[0]]
+            first_iteration_indicator = 0
+        #if curr_time - last_recorded_time_1 >=7.0: 
+        #    accum_image = np.zeros((height, width), np.uint8)
+        #    print ("Accum Image updated")
+        #    last_recorded_time_1 = curr_time
+        else:
+            #crop_img=img[x1y1[1]:x2y2[1],x1y1[0]:x2y2[0]]
+            #crop_black=accum_image[x1y1[1]:x2y2[1],x1y1[0]:x2y2[0]]
+            #customization
+            gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+            fgmask = fgbg.apply(gray)
+            thresh = 15
+            maxValue = 40
+            ret, th1 = cv2.threshold(fgmask, thresh, maxValue, cv2.THRESH_TRUNC)
+            accum_image = cv2.add(accum_image, th1)
+            #essentials
+           # if class_names[int(classes[i])]=='person' :
+            #    img = cv2.rectangle(img, x1y1, x2y2, (255, 255, 0), 1)
+            crop_img=img[x1y1[1]:x2y2[1],x1y1[0]:x2y2[0]]
+            crop_black=accum_image[x1y1[1]:x2y2[1],x1y1[0]:x2y2[0]]
+            if class_names[int(classes[i])]=='crowd' :
+                img = cv2.rectangle(img, x1y1, x2y2, (0,0 , 255), 1)
+                
+                
+                img = cv2.putText(img, '{} {:.2f}'.format(
+                class_names[int(classes[i])], objectness[i]),
+                (x1y1[0],x2y2[1]), cv2.FONT_HERSHEY_PLAIN, 1, (0, 0,0 ), 1)
+                color_image = im_color = cv2.applyColorMap(crop_black, cv2.COLORMAP_HOT)
+                img[x1y1[1]:x2y2[1],x1y1[0]:x2y2[0]]= cv2.addWeighted(crop_img, 0.5, color_image, 0.5, 0)
+            #img= cv2.addWeighted(img, 0.5, color_image, 0.5, 0)
+        #cv2.imshow('result over',img)
     return img
 
 
