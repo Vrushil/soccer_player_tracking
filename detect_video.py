@@ -79,11 +79,11 @@ def main(_argv):
         img_in = transform_images(img_in, FLAGS.size)
 
         t1 = time.time()
-       # setmethod(1)
+      
         p_boxes, p_scores, p_classes, p_nums = yolo_player.predict(img_in)
         img=draw_outputs(img,( p_boxes, p_scores, p_classes, p_nums),yolo_player_class_names)
         
-        #setmethod(0)
+        
         boxes, scores, classes, nums = yolo.predict(img_in)
         img = draw_outputs(img, (boxes, scores, classes, nums), class_names)
         
