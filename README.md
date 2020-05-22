@@ -45,6 +45,12 @@ conda activate soccer-gpu
  
  python detect_video.py  --video  ./data/goals.mp4 // for detections in a video file
  
+ ## Output
+ 
+ ![Output for Crowd detector](https://github.com/Vrushil/soccer_player_tracking/blob/master/Output_crowd.png)
+ 
+ ![Output for Player Detector](https://github.com/Vrushil/soccer_player_tracking/blob/master/Output_player.png)
+ 
  ## File Details
  
  convert.py // Convert the weights of YOLOv3 to  .tf format
